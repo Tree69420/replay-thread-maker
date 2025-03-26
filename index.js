@@ -40,10 +40,33 @@ function getlink() {
 
 async function createPaste(text) {
   await driver.get("https://pokepast.es");
-  if (browser == 1) await driver.navigate().refresh();
   await driver.manage().setTimeouts({implicit: pokepasteWaitTime * 1000});
-  let inputArea = await driver.findElement(By.name("paste"));
-  await inputArea.sendKeys(text);
+  const element = await driver.wait(
+    until.elementLocated(By.name("paste")),
+    15000, // 15 second timeout
+    `Element never appeared in DOM`
+  );
+
+  // Wait for element to be visible and interactable
+  await driver.wait(
+    until.elementIsVisible(element),
+    15000,
+    `Element never became visible`
+  );
+  let newtext = text;
+  // JavaScript injection with error handling
+  try {
+      await driver.executeScript(`
+        document.getElementsByName(\"paste\")[0].value = arguments[0];`, newtext);
+  } catch (error) {
+    console.error('JavaScript injection failed:', error);
+    console.log(JSON.stringify(text));
+    // Fallback to slow sendKeys if absolutely necessary
+    await element.clear();
+    await element.sendKeys(text);
+  }
+  //let inputArea = await driver.findElement(By.name("paste"));
+  //await inputArea.sendKeys(text);
   //driver.executeScript(`document.getElementsByName(\"paste\")[0].value = ${text}`);
   let submitButton = await driver.findElement(By.css('input[type="Submit"][value="Submit Paste!"]'));
   await submitButton.click();
