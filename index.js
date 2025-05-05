@@ -110,6 +110,9 @@ async function ripfromop(text) {
       teams[team2] = [];
     } else if (lines[i].includes(": ")){
       let tier = lines[i].split(": ")[0];
+      if (tier.trim() == "Deadline") {
+        continue;
+      }
       let p1 = lines[i].split(": ")[1].split(" vs ")[0];
       let p2 = lines[i].split(": ")[1].split(" vs ")[1];
       teams[team1].push(p1);
@@ -139,8 +142,10 @@ async function ripfrompost(author, linktags) {
     console.log(games);
     for (let i = 0; i < matchups.length; i++) {
       if (matchups[i][1] == author || matchups[i][2] == author) {
-        matchups[i][3] = games;
-        return;
+        if (!matchups[i][3].length) {
+          matchups[i][3] = games;
+          return;
+        }
       }
     }
   }
