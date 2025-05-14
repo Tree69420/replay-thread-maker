@@ -33,10 +33,24 @@ function getlink() {
   });
 
   return  new Promise(resolve => readline.question("input link\n", ans => {
-  readline.close();
-  resolve(ans);
-}))
+    readline.close();
+    resolve(ans);
+  }))
 }
+
+function confirm() {
+  const readline = require("readline").createInterface({
+    input: process.stdin,
+    output: process.stdout
+  });
+
+  return new Promise(resolve => readline.question("Error: Next page button may have been blocked by ad.\nIf this tour only has one page, press Y to confirm.\n", ans => {
+    readline.close();
+    resolve(ans);
+  }))
+}
+
+
 
 async function createPaste(text) {
   await driver.get("https://pokepast.es");
@@ -168,115 +182,127 @@ async function main() {
       break;
   }
   await driver.manage().window().maximize();
-  while (link != "q" && link != "quit") {
-    let output = "";
-    let justreplays = "";
-    let usagestats = "";
-    await driver.get(link);
-    await driver.manage().setTimeouts({implicit: smogonWaitTime * 1000});
-    let posts = await driver.findElements(By.className("message"));
-    post1 = posts[0];
-    let post1text = await post1.getText();
-    console.log(post1text);
-    ripfromop(post1text);
-    let firstpage = 1;
-    let nextButton = await driver.findElement(By.className("pageNav-jump--next"));
-    while (nextButton) {
-      if (!firstpage) {
-        try {
-          await nextButton.click();
-        } catch (e) {
-          throw new Error("Error: Next page button was blocked by ad.\nRun this code again, it will likely work.");
-        }
-        await driver.manage().setTimeouts({implicit: smogonNewPageWaitTime * 1000});
-        posts = await driver.findElements(By.className("message"));
-        try {
-          nextButton = await driver.findElement(By.className("pageNav-jump--next"));
-        } catch {
-          nextButton = null;
-        }
-      }
-      for (let i = firstpage; i < posts.length; i++) {
-        let cpost = posts[i];
-        let replays = await cpost.findElements(By.tagName('a'));
-        let text = await cpost.getText();
-        let author = text.split("\n")[0];
-        await ripfrompost(author, replays);
-      }
-      firstpage = 0;
-    }
-    console.log(matchups);
-    let tiercheck = {};
-    for (let i = 0; i < matchups.length; i++) {
-      if (tiercheck[matchups[i][0]] == 2) {
-        continue;
-      }
-      if (!tiercheck[matchups[i][0]]) {
-        tiercheck[matchups[i][0]] = 1;
-        output += `\n[SIZE=6][B]${matchups[i][0]}[/B][/SIZE]\n`;
-        usagestats += `\n[SIZE=6][B]${matchups[i][0]}[/B][/SIZE]\n`;
-      }
-      let tierreplays = "";
-      for (let j = 0; j < matchups.length; j++) {
-        if (tiercheck[matchups[j][0]] == 1) {
-          console.log(matchups[j]);
-          console.log(tiercheck);
-          let p1 = matchups[j][1];
-          let p2 = matchups[j][2];
-          if (matchups[j][3].length == 1) {
-            justreplays += matchups[j][3][0] + '\n';
-            tierreplays += matchups[j][3][0] + '\n';
-            output += `[URL=\'${matchups[j][3][0]}\'][${playertoteam[p1]}] ${p1} vs [${playertoteam[p2]}] ${p2} [/URL]`;
-          } else {
-            output += `[${playertoteam[p1]}] ${p1} vs [${playertoteam[p2]}] ${p2} `;
-            for (let k = 1; k <= matchups[j][3].length; k++) {
-              justreplays += matchups[j][3][k-1] + '\n';
-              tierreplays += matchups[j][3][k-1] + '\n';
-              output += `[URL=\'${matchups[j][3][k-1]}\']G${k}[/URL] `;
-            }
-          }
-          output += "\n";
-        }
-      }
-      tiercheck[matchups[i][0]] = 2;
-      await driver.get("https://replaystats-eo.herokuapp.com/");
-      await driver.manage().setTimeouts({implicit: 2000});
-      let textArea;
-      try {
-        textArea = await driver.findElement(By.name("replay_urls"));
-      } catch {
-        textArea = null;
-      }
-      if (textArea == null) {
-        break;
-      }
-      await textArea.sendKeys(tierreplays);
-      await driver.manage().setTimeouts({implicit: replayStatsWaitTime * 1000});
-      let enterButton = await driver.findElement(By.name("link_submit"));
-      await enterButton.click();
-      await driver.manage().setTimeouts({implicit: 3000});
-      console.log("getting text");
-      let rawtexts = await driver.findElements(By.css("textarea"));
-      let usage = await rawtexts[2].getText();
-      let mnt = await rawtexts[3].getText();
-      let combos = await rawtexts[4].getText();
-      let leads = await rawtexts[5].getText();
-      usage = usage.replace("???", matchups[i][0]);
-      console.log("got text");
-      let mntlink = await createPaste(mnt);
-      let comboslink = await createPaste(combos);
-      leads = leads.split("\[CODE\]")[1].split("\[")[0];
-      let leadslink = await createPaste(leads);
-      usagestats += usage.split("[CODE]")[0] + `[URL=${mntlink}]Moves and Teammates[/URL] | [URL=${comboslink}]Combos[/URL] | [URL=${leadslink}]Leads[/URL]\n[CODE]` + usage.split("[CODE]")[1];
-      usagestats += "\n";
-    }
-
-    fs.writeFile("output", output, (data) => { console.log(data)});
-    fs.writeFile("replays", justreplays, (data) => { console.log(data)});
-    fs.writeFile("usagestats", usagestats, (data) => {console.log(data)});
-    driver.close();
-    driver.quit();
-    link = await getlink();
+  let output = "";
+  let justreplays = "";
+  let usagestats = "";
+  await driver.get(link);
+  await driver.manage().setTimeouts({implicit: smogonWaitTime * 1000});
+  let posts = await driver.findElements(By.className("message"));
+  post1 = posts[0];
+  let post1text = await post1.getText();
+  console.log(post1text);
+  ripfromop(post1text);
+  let firstpage = 1;
+  let nextButton;
+  try {
+    nextButton = await driver.findElement(By.className("pageNav-jump--next"));
   }
+  catch (e) {
+    let answer = await confirm();
+    if (answer == "Y" || answer == "y") {
+      nextButton = 1;
+    }
+    else{
+      driver.close();
+      driver.quit();
+      return;
+    }
+  }
+  while (nextButton) {
+    if (!firstpage) {
+      try {
+        await nextButton.click();
+      } catch (e) {
+        throw new Error("Next Button blocked by ad, run this again.");
+        //break;
+      }
+      posts = await driver.findElements(By.className("message"));
+    }
+    for (let i = firstpage; i < posts.length; i++) {
+      let cpost = posts[i];
+      let replays = await cpost.findElements(By.tagName('a'));
+      let text = await cpost.getText();
+      let author = text.split("\n")[0];
+      await ripfrompost(author, replays);
+    }
+    firstpage = 0;
+    try {
+      nextButton = await driver.findElement(By.className("pageNav-jump--next"));
+    }
+    catch (e) {
+      break;
+    }
+  }
+  console.log(matchups);
+  let tiercheck = {};
+  for (let i = 0; i < matchups.length; i++) {
+    if (tiercheck[matchups[i][0]] == 2) {
+      continue;
+    }
+    if (!tiercheck[matchups[i][0]]) {
+      tiercheck[matchups[i][0]] = 1;
+      output += `\n[SIZE=6][B]${matchups[i][0]}[/B][/SIZE]\n`;
+      usagestats += `\n[SIZE=6][B]${matchups[i][0]}[/B][/SIZE]\n`;
+    }
+    let tierreplays = "";
+    for (let j = 0; j < matchups.length; j++) {
+      if (tiercheck[matchups[j][0]] == 1) {
+        console.log(matchups[j]);
+        console.log(tiercheck);
+        let p1 = matchups[j][1];
+        let p2 = matchups[j][2];
+        if (matchups[j][3].length == 1) {
+          justreplays += matchups[j][3][0] + '\n';
+          tierreplays += matchups[j][3][0] + '\n';
+          output += `[URL=\'${matchups[j][3][0]}\'][${playertoteam[p1]}] ${p1} vs [${playertoteam[p2]}] ${p2} [/URL]`;
+        } else {
+          output += `[${playertoteam[p1]}] ${p1} vs [${playertoteam[p2]}] ${p2} `;
+          for (let k = 1; k <= matchups[j][3].length; k++) {
+            justreplays += matchups[j][3][k-1] + '\n';
+            tierreplays += matchups[j][3][k-1] + '\n';
+            output += `[URL=\'${matchups[j][3][k-1]}\']G${k}[/URL] `;
+          }
+        }
+        output += "\n";
+      }
+    }
+    tiercheck[matchups[i][0]] = 2;
+    await driver.get("https://replaystats-eo.herokuapp.com/");
+    await driver.manage().setTimeouts({implicit: 2000});
+    let textArea;
+    try {
+      textArea = await driver.findElement(By.name("replay_urls"));
+    } catch {
+      textArea = null;
+    }
+    if (textArea == null) {
+      break;
+    }
+    await textArea.sendKeys(tierreplays);
+    await driver.manage().setTimeouts({implicit: replayStatsWaitTime * 1000});
+    let enterButton = await driver.findElement(By.name("link_submit"));
+    await enterButton.click();
+    await driver.manage().setTimeouts({implicit: 3000});
+    console.log("getting text");
+    let rawtexts = await driver.findElements(By.css("textarea"));
+    let usage = await rawtexts[2].getText();
+    let mnt = await rawtexts[3].getText();
+    let combos = await rawtexts[4].getText();
+    let leads = await rawtexts[5].getText();
+    usage = usage.replace("???", matchups[i][0]);
+    console.log("got text");
+    let mntlink = await createPaste(mnt);
+    let comboslink = await createPaste(combos);
+    leads = leads.split("\[CODE\]")[1].split("\[")[0];
+    let leadslink = await createPaste(leads);
+    usagestats += usage.split("[CODE]")[0] + `[URL=${mntlink}]Moves and Teammates[/URL] | [URL=${comboslink}]Combos[/URL] | [URL=${leadslink}]Leads[/URL]\n[CODE]` + usage.split("[CODE]")[1];
+    usagestats += "\n";
+  }
+
+  fs.writeFile("output", output, (data) => { console.log(data)});
+  fs.writeFile("replays", justreplays, (data) => { console.log(data)});
+  fs.writeFile("usagestats", usagestats, (data) => {console.log(data)});
+  //driver.close();
+  driver.quit();
 
 }
